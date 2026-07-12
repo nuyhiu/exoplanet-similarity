@@ -157,7 +157,7 @@ for label, key, earth_val, unit in factor_rows:
         {
             "요소": label,
             "지구 값": f"{earth_val}{unit}",
-            "이 행성 값": f"{val}{unit}" if has_val else "미확인"
+            "외계행성 값": f"{val}{unit}" if has_val else "미확인"
         }
     )
 
