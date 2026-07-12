@@ -1,9 +1,16 @@
 """Plotly go.Surface로 3D 행성 구체를 그리는 모듈."""
 
+from functools import lru_cache
+from io import BytesIO
+
 import numpy as np
 import plotly.graph_objects as go
 
-# 지구용 컬러스케일: 밝은 파란 바다 -> 짙은 초록 육지 -> 차분한 흰회색 극지방
+# Solar System Scope의 지구 데이맵 텍스처 (구름 없는 실제 위성 이미지 합성본, CC BY 4.0, NASA 데이터 기반)
+# 출처: https://www.solarsystemscope.com/textures/
+EARTH_TEXTURE_URL = "https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg"
+
+# 지구용 컬러스케일(실제 텍스처 로딩 실패 시 대체용): 밝은 파란 바다 -> 짙은 초록 육지 -> 차분한 흰회색 극지방
 EARTH_COLORSCALE = [
     [0.00, "#0f4c81"],
     [0.20, "#1565a3"],
@@ -25,25 +32,22 @@ def _smoothstep(x, edge0, edge1):
 
 def _earth_surface_value(theta, phi):
     """theta(극각 0~pi), phi(방위각 0~2pi)를 위도/경도로 변환한 뒤,
-    실제 대륙의 대략적인 위치에 타원형 '블롭'을 배치해 대륙 모양을 흉내낸다.
-    블롭 수를 최소화하고 경계를 매끄럽게(smoothstep) 처리해 지저분한 겹침을 방지."""
-    lat = 90 - np.degrees(theta)  # +90(북극) ~ -90(남극)
-    lon = ((np.degrees(phi) + 180) % 360) - 180  # -180 ~ 180
+    실제 대륙의 대략적인 위치에 타원형 '블롭'을 배치해 대륙 모양을 흉내낸다(대체용)."""
+    lat = 90 - np.degrees(theta)
+    lon = ((np.degrees(phi) + 180) % 360) - 180
 
     def lon_diff(a, b):
         return (a - b + 180) % 360 - 180
 
-    # (중심 위도, 중심 경도, 위도 반경, 경도 반경, 세기) - 6개 핵심 대륙만 사용
     continents = [
-        (45, -100, 22, 28, 1.00),   # 북아메리카
-        (-15, -60, 26, 14, 0.95),   # 남아메리카
-        (5, 20, 34, 20, 1.00),      # 아프리카
-        (50, 70, 24, 55, 1.00),     # 유라시아(유럽+아시아, 인도까지 포함하도록 폭 넓게)
-        (-24, 134, 14, 17, 0.85),   # 호주
-        (73, -41, 9, 11, 0.55),     # 그린란드
+        (45, -100, 22, 28, 1.00),
+        (-15, -60, 26, 14, 0.95),
+        (5, 20, 34, 20, 1.00),
+        (50, 70, 24, 55, 1.00),
+        (-24, 134, 14, 17, 0.85),
+        (73, -41, 9, 11, 0.55),
     ]
 
-    # 각 대륙을 완만한 지수(super-gaussian)로 계산해 둥근 원보다 넓적한 대륙형 실루엣 생성
     field = np.zeros_like(lat)
     for lat0, lon0, s_lat, s_lon, w in continents:
         d_lat = (lat - lat0) / s_lat
@@ -51,38 +55,74 @@ def _earth_surface_value(theta, phi):
         r2 = d_lat ** 2 + d_lon ** 2
         field = np.maximum(field, w * np.exp(-(r2 ** 1.3)))
 
-    polar_mask = np.abs(lat) > 74  # 극지방 비중 축소
-
-    land_frac = _smoothstep(field, 0.32, 0.5)  # 0=바다, 1=육지 (경계가 매끄럽게 전환)
-
-    ocean_value = 0.05 + 0.48 * _smoothstep(field, 0.0, 0.32)  # 육지에 가까울수록 밝은 연안색
+    polar_mask = np.abs(lat) > 74
+    land_frac = _smoothstep(field, 0.32, 0.5)
+    ocean_value = 0.05 + 0.48 * _smoothstep(field, 0.0, 0.32)
     land_value = 0.56 + 0.34 * _smoothstep(field, 0.5, 1.0)
-
     value = ocean_value * (1 - land_frac) + land_value * land_frac
     value = np.where(polar_mask, 0.95 + 0.05 * (np.abs(lat) - 74) / 16, value)
 
     return np.clip(value, 0, 1)
 
 
+@lru_cache(maxsize=1)
+def _load_earth_palette(grid_lon=144, grid_lat=72, palette_colors=64):
+    """실제 지구 텍스처 이미지를 불러와 (팔레트 인덱스 배열, RGB 팔레트) 로 변환.
+    실패 시 None 반환 -> 호출부에서 스타일화된 지구로 자동 대체."""
+    try:
+        import requests
+        from PIL import Image
+
+        resp = requests.get(EARTH_TEXTURE_URL, timeout=8)
+        resp.raise_for_status()
+        img = Image.open(BytesIO(resp.content)).convert("RGB")
+        img = img.resize((grid_lon, grid_lat))
+        img_p = img.convert("P", palette=Image.ADAPTIVE, colors=palette_colors)
+        idx = np.array(img_p, dtype=float)  # (grid_lat, grid_lon)
+        pal = img_p.getpalette()[: palette_colors * 3]
+        colors = [tuple(pal[i * 3: i * 3 + 3]) for i in range(palette_colors)]
+        return idx, colors
+    except Exception:
+        return None
+
+
 def make_earth_figure(radius=1.0, title="지구 (Earth)", height=380):
-    """바다(파랑)-육지(초록/갈색)-극지방(흰색)이 뚜렷하게 구분되는 스타일화된 지구 3D 구체."""
-    theta = np.linspace(0, np.pi, 90)
-    phi = np.linspace(0, 2 * np.pi, 90)
-    theta, phi = np.meshgrid(theta, phi)
-
+    """실제 위성 텍스처(구름 없는 데이맵)를 입힌 지구 3D 구체.
+    인터넷 연결 문제 등으로 텍스처 로딩 실패 시, 스타일화된 대륙 패턴으로 자동 대체."""
+    loaded = _load_earth_palette()
     display_radius = min(max((radius or 1.0) ** 0.5, 0.6), 1.8)
-    x = display_radius * np.sin(theta) * np.cos(phi)
-    y = display_radius * np.sin(theta) * np.sin(phi)
-    z = display_radius * np.cos(theta)
 
-    surfacecolor = _earth_surface_value(theta, phi)
+    if loaded is not None:
+        idx, colors = loaded
+        grid_lat, grid_lon = idx.shape
+        n_colors = len(colors)
+
+        lat = np.linspace(0, np.pi, grid_lat)
+        lon = np.linspace(0, 2 * np.pi, grid_lon)
+        theta, phi = np.meshgrid(lat, lon, indexing="ij")
+
+        x = display_radius * np.sin(theta) * np.cos(phi)
+        y = display_radius * np.sin(theta) * np.sin(phi)
+        z = display_radius * np.cos(theta)
+
+        surfacecolor = idx / (n_colors - 1)
+        colorscale = [[i / (n_colors - 1), f"rgb({r},{g},{b})"] for i, (r, g, b) in enumerate(colors)]
+    else:
+        theta = np.linspace(0, np.pi, 90)
+        phi = np.linspace(0, 2 * np.pi, 90)
+        theta, phi = np.meshgrid(theta, phi)
+        x = display_radius * np.sin(theta) * np.cos(phi)
+        y = display_radius * np.sin(theta) * np.sin(phi)
+        z = display_radius * np.cos(theta)
+        surfacecolor = _earth_surface_value(theta, phi)
+        colorscale = EARTH_COLORSCALE
 
     fig = go.Figure(
         data=[
             go.Surface(
                 x=x, y=y, z=z,
                 surfacecolor=surfacecolor,
-                colorscale=EARTH_COLORSCALE,
+                colorscale=colorscale,
                 cmin=0, cmax=1,
                 showscale=False,
                 lighting=dict(ambient=0.55, diffuse=0.85, specular=0.25, roughness=0.7),
@@ -288,4 +328,3 @@ def make_planet_figure(color="#3D7EAA", title="Earth", radius=1.0, height=380, i
         showlegend=False,
     )
     return fig
-
