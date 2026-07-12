@@ -3,19 +3,18 @@
 import numpy as np
 import plotly.graph_objects as go
 
-# 지구용 컬러스케일: 짙은 바다(남색) -> 얕은 바다(하늘색) -> 육지(초록) -> 육지(갈색/황토) -> 극지방(흰색)
+# 지구용 컬러스케일: 짙은 바다(남색) -> 얕은 바다(청록) -> 육지(짙은 초록 -> 초록) -> 극지방(차분한 흰회색)
 EARTH_COLORSCALE = [
-    [0.00, "#0a3a5c"],
-    [0.20, "#0f5088"],
-    [0.40, "#1c74ad"],
-    [0.53, "#4aa8d8"],
-    [0.55, "#2f6b3a"],
-    [0.63, "#4d8a3f"],
-    [0.72, "#7a9440"],
-    [0.80, "#a9834a"],
-    [0.87, "#c9a877"],
-    [0.92, "#e8e8e8"],
-    [1.00, "#ffffff"],
+    [0.00, "#041526"],
+    [0.20, "#083150"],
+    [0.40, "#0e4d75"],
+    [0.53, "#166f97"],
+    [0.55, "#16311c"],
+    [0.68, "#1f4a27"],
+    [0.80, "#2c6234"],
+    [0.90, "#3a7a40"],
+    [0.94, "#c6d2d8"],
+    [1.00, "#eef2f4"],
 ]
 
 
@@ -48,14 +47,15 @@ def _earth_surface_value(theta, phi):
 
     field = field / field.max()  # 0~1 정규화
 
-    polar_mask = np.abs(lat) > 66
+    polar_mask = np.abs(lat) > 74  # 극지방 비중 축소(기존 66도 -> 74도)
     land_mask = (~polar_mask) & (field > 0.28)
     ocean_mask = (~polar_mask) & (~land_mask)
 
     value = np.zeros_like(field)
-    value[ocean_mask] = 0.53 * (1 - field[ocean_mask] / 0.28) ** 0.5 * 0.9 + 0.02
-    value[land_mask] = 0.55 + 0.32 * np.clip((field[land_mask] - 0.28) / 0.5, 0, 1)
-    value[polar_mask] = 0.94 + 0.06 * (np.abs(lat[polar_mask]) - 66) / 24
+    # 대륙에서 멀수록(field->0) 짙은 심해색, 육지에 가까울수록(field->0.28) 밝은 연안색
+    value[ocean_mask] = 0.02 + 0.51 * np.clip(field[ocean_mask] / 0.28, 0, 1)
+    value[land_mask] = 0.55 + 0.35 * np.clip((field[land_mask] - 0.28) / 0.5, 0, 1)
+    value[polar_mask] = 0.95 + 0.05 * (np.abs(lat[polar_mask]) - 74) / 16
 
     return np.clip(value, 0, 1)
 
@@ -284,3 +284,4 @@ def make_planet_figure(color="#3D7EAA", title="Earth", radius=1.0, height=380, i
         showlegend=False,
     )
     return fig
+
