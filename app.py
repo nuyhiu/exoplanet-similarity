@@ -1,4 +1,74 @@
-대기·항성·자전공전 등 추가 요소를 종합해 지구와 얼마나 닮았는지 계산합니다.")
+import pandas as pd
+import streamlit as st
+
+from utils.planet3d import make_earth_figure, make_exoplanet_figure, make_planet_figure
+from utils.similarity import EARTH, compute_overall_similarity
+
+st.set_page_config(page_title="지구-외계행성 유사도 분석", page_icon="🪐", layout="wide")
+
+# ----------------------------------------------------------------------------
+# 다크 우주 테마 CSS (별 배경 + 카드 스타일)
+# ----------------------------------------------------------------------------
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background:
+            radial-gradient(1px 1px at 20px 30px, #ffffff55, transparent),
+            radial-gradient(1px 1px at 90px 120px, #ffffff44, transparent),
+            radial-gradient(1.5px 1.5px at 160px 60px, #ffffff66, transparent),
+            radial-gradient(1px 1px at 230px 180px, #ffffff33, transparent),
+            radial-gradient(2px 2px at 300px 40px, #ffffff55, transparent),
+            radial-gradient(1px 1px at 340px 220px, #ffffff33, transparent),
+            linear-gradient(180deg, #05070f 0%, #0A0E27 50%, #0d1230 100%);
+        background-repeat: repeat;
+        background-size: 380px 260px, 380px 260px, 380px 260px, 380px 260px, 380px 260px, 380px 260px, cover;
+    }
+    h1, h2, h3, h4 { color: #E8EAF6 !important; }
+    .planet-name {
+        text-align: center;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #EAF0FF;
+        margin-bottom: 0.2rem;
+    }
+    .similarity-box {
+        background: linear-gradient(135deg, #141A3C, #1B2350);
+        border: 1px solid #3A4680;
+        border-radius: 16px;
+        padding: 1.2rem 1.5rem;
+        text-align: center;
+        margin-top: 0.5rem;
+    }
+    .similarity-percent {
+        font-size: 3rem;
+        font-weight: 800;
+        color: #7FE6B8;
+    }
+    .factor-table td, .factor-table th { color: #D6DCF5 !important; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+@st.cache_data
+def load_data():
+    df = pd.read_csv("data/exoplanets_template.csv")
+    return df
+
+
+df = load_data()
+# 지구 행 제외한 외계행성만 탐색 대상으로 사용
+planets_df = df[df["planet_name"] != "Earth"].reset_index(drop=True)
+
+if "idx" not in st.session_state:
+    st.session_state.idx = 0
+
+n = len(planets_df)
+
+st.title("🪐 지구-외계행성 유사도 분석기")
+st.caption("ESI(지구 유사도 지수) + 대기·항성·자전공전 등 추가 요소를 종합해 지구와 얼마나 닮았는지 계산합니다.")
 
 # ----------------------------------------------------------------------------
 # 행성 탐색 (좌우 화살표)
@@ -106,3 +176,4 @@ with st.expander("ℹ️ 유사도는 어떻게 계산되나요?"):
 - 값이 비어 있는(미확인) 요소는 계산에서 자동으로 제외되고, 나머지 요소들의 가중치로 재조정됩니다.
         """
     )
+
