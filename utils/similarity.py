@@ -15,6 +15,7 @@ EARTH = {
     "mass_earth": 1.0,
     "gravity_earth": 1.0,
     "radius_earth": 1.0,
+    "escape_velocity_km_s": 11.19,
     "density_gcm3": 5.51,
     "orbital_period_days": 365.25,
     "rotation_period_hours": 24.0,
@@ -83,9 +84,16 @@ def compute_esi(row):
             used.append("밀도")
     interior = float(np.prod(interior_terms)) if interior_terms else None
 
-    # --- 표면 ESI: 탈출속도(질량/반지름 유도), 표면온도 ---
+    # --- 표면 ESI: 탈출속도, 표면온도 ---
     surface_terms = []
-    if _has(row, "mass_earth") and _has(row, "radius_earth") and float(row["radius_earth"]) > 0:
+    if _has(row, "escape_velocity_km_s"):
+        # CSV에 직접 계산된 탈출속도(km/s) 값이 있으면 우선 사용
+        t = _esi_term(row["escape_velocity_km_s"], EARTH["escape_velocity_km_s"], 0.70, 2)
+        if t is not None:
+            surface_terms.append(t)
+            used.append("탈출속도")
+    elif _has(row, "mass_earth") and _has(row, "radius_earth") and float(row["radius_earth"]) > 0:
+        # 없으면 질량/반지름으로부터 유도(지구=1 기준)
         v_esc = (float(row["mass_earth"]) / float(row["radius_earth"])) ** 0.5
         t = _esi_term(v_esc, 1.0, 0.70, 2)
         if t is not None:
@@ -177,3 +185,4 @@ def compute_overall_similarity(row, esi_weight=0.6):
         "esi_used_factors": esi_used,
         "extended_used_factors": ext_used,
     }
+
