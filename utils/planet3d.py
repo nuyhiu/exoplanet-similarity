@@ -20,25 +20,42 @@ EARTH_COLORSCALE = [
 
 
 def _earth_surface_value(theta, phi):
-    """theta(극각 0~pi), phi(방위각 0~2pi)에 따라 대륙처럼 보이는 패턴을 생성."""
+    """theta(극각 0~pi), phi(방위각 0~2pi)를 위도/경도로 변환한 뒤,
+    실제 대륙의 대략적인 위치에 타원형 '블롭'을 배치해 대륙 모양을 흉내낸다."""
     lat = 90 - np.degrees(theta)  # +90(북극) ~ -90(남극)
-    lon = np.degrees(phi)
+    lon = ((np.degrees(phi) + 180) % 360) - 180  # -180 ~ 180
 
-    noise = (
-        0.45 * np.sin(np.radians(3 * lat + 40)) * np.cos(np.radians(2.2 * lon + 15))
-        + 0.30 * np.sin(np.radians(5 * lat - 1.5 * lon + 60))
-        + 0.25 * np.cos(np.radians(6.5 * lon - 2 * lat + 10))
-    )
-    noise = (noise - noise.min()) / (noise.max() - noise.min())  # 0~1 정규화
+    def lon_diff(a, b):
+        return (a - b + 180) % 360 - 180
 
-    polar_mask = np.abs(lat) > 62
-    land_mask = (~polar_mask) & (noise > 0.55)
+    # (중심 위도, 중심 경도, 위도 반경, 경도 반경, 세기) - 실제 대륙의 대략적인 위치
+    continents = [
+        (48, -100, 24, 32, 1.00),   # 북아메리카
+        (-16, -60, 26, 15, 0.92),   # 남아메리카
+        (8, 20, 32, 24, 1.00),      # 아프리카
+        (55, 80, 26, 60, 1.05),     # 유라시아
+        (22, 78, 14, 16, 0.55),     # 인도 부근 (유라시아 남쪽 돌출부)
+        (-24, 134, 15, 19, 0.85),   # 호주
+        (73, -41, 11, 13, 0.55),    # 그린란드
+        (62, 100, 16, 30, 0.45),    # 시베리아 동부 강조
+    ]
+
+    field = np.zeros_like(lat)
+    for lat0, lon0, s_lat, s_lon, w in continents:
+        d_lat = (lat - lat0) / s_lat
+        d_lon = lon_diff(lon, lon0) / s_lon
+        field += w * np.exp(-(d_lat ** 2 + d_lon ** 2))
+
+    field = field / field.max()  # 0~1 정규화
+
+    polar_mask = np.abs(lat) > 66
+    land_mask = (~polar_mask) & (field > 0.28)
     ocean_mask = (~polar_mask) & (~land_mask)
 
-    value = np.zeros_like(noise)
-    value[ocean_mask] = 0.53 * (noise[ocean_mask] / 0.55)
-    value[land_mask] = 0.55 + 0.32 * ((noise[land_mask] - 0.55) / 0.45)
-    value[polar_mask] = 0.94 + 0.06 * (np.abs(lat[polar_mask]) - 62) / 28
+    value = np.zeros_like(field)
+    value[ocean_mask] = 0.53 * (1 - field[ocean_mask] / 0.28) ** 0.5 * 0.9 + 0.02
+    value[land_mask] = 0.55 + 0.32 * np.clip((field[land_mask] - 0.28) / 0.5, 0, 1)
+    value[polar_mask] = 0.94 + 0.06 * (np.abs(lat[polar_mask]) - 66) / 24
 
     return np.clip(value, 0, 1)
 
@@ -267,5 +284,3 @@ def make_planet_figure(color="#3D7EAA", title="Earth", radius=1.0, height=380, i
         showlegend=False,
     )
     return fig
-
-
