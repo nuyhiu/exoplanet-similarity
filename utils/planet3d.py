@@ -1,34 +1,27 @@
 """Plotly go.Surface로 3D 행성 구체를 그리는 모듈."""
 
-from functools import lru_cache
-from io import BytesIO
-
 import numpy as np
 import plotly.graph_objects as go
 
-EARTH_TEXTURE_URL = (
-    "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/"
-    "land_ocean_ice_cloud_2048.jpg"
-)
-
-# 지구용 커스텀 컬러스케일(실제 텍스처 로딩 실패 시 대체용): 짙은 바다 -> 얕은 바다 -> 육지 -> 극지방
+# 지구용 컬러스케일: 짙은 바다(남색) -> 얕은 바다(하늘색) -> 육지(초록) -> 육지(갈색/황토) -> 극지방(흰색)
 EARTH_COLORSCALE = [
-    [0.00, "#0b3d61"],
-    [0.20, "#134f7e"],
-    [0.40, "#1f6fa8"],
-    [0.54, "#3f9bd1"],
-    [0.55, "#3f6b35"],
-    [0.65, "#5c8a3a"],
-    [0.75, "#8a7440"],
-    [0.85, "#c9a877"],
-    [0.90, "#e8e8e8"],
+    [0.00, "#0a3a5c"],
+    [0.20, "#0f5088"],
+    [0.40, "#1c74ad"],
+    [0.53, "#4aa8d8"],
+    [0.55, "#2f6b3a"],
+    [0.63, "#4d8a3f"],
+    [0.72, "#7a9440"],
+    [0.80, "#a9834a"],
+    [0.87, "#c9a877"],
+    [0.92, "#e8e8e8"],
     [1.00, "#ffffff"],
 ]
 
 
 def _earth_surface_value(theta, phi):
-    """theta(극각 0~pi), phi(방위각 0~2pi)에 따라 대륙처럼 보이는 패턴을 생성(대체용)."""
-    lat = 90 - np.degrees(theta)
+    """theta(극각 0~pi), phi(방위각 0~2pi)에 따라 대륙처럼 보이는 패턴을 생성."""
+    lat = 90 - np.degrees(theta)  # +90(북극) ~ -90(남극)
     lon = np.degrees(phi)
 
     noise = (
@@ -36,82 +29,40 @@ def _earth_surface_value(theta, phi):
         + 0.30 * np.sin(np.radians(5 * lat - 1.5 * lon + 60))
         + 0.25 * np.cos(np.radians(6.5 * lon - 2 * lat + 10))
     )
-    noise = (noise - noise.min()) / (noise.max() - noise.min())
+    noise = (noise - noise.min()) / (noise.max() - noise.min())  # 0~1 정규화
 
     polar_mask = np.abs(lat) > 62
     land_mask = (~polar_mask) & (noise > 0.55)
     ocean_mask = (~polar_mask) & (~land_mask)
 
     value = np.zeros_like(noise)
-    value[ocean_mask] = 0.54 * (noise[ocean_mask] / 0.55)
-    value[land_mask] = 0.55 + 0.35 * ((noise[land_mask] - 0.55) / 0.45)
-    value[polar_mask] = 0.92 + 0.08 * (np.abs(lat[polar_mask]) - 62) / 28
+    value[ocean_mask] = 0.53 * (noise[ocean_mask] / 0.55)
+    value[land_mask] = 0.55 + 0.32 * ((noise[land_mask] - 0.55) / 0.45)
+    value[polar_mask] = 0.94 + 0.06 * (np.abs(lat[polar_mask]) - 62) / 28
 
     return np.clip(value, 0, 1)
 
 
-@lru_cache(maxsize=1)
-def _load_earth_palette(grid_lon=144, grid_lat=72, palette_colors=64):
-    """NASA 지구 텍스처 이미지를 불러와 (팔레트 인덱스 배열, RGB 팔레트) 로 변환.
-    실패 시 None 반환 -> 호출부에서 노이즈 기반 지구로 자동 대체."""
-    try:
-        import requests
-        from PIL import Image
-
-        resp = requests.get(EARTH_TEXTURE_URL, timeout=8)
-        resp.raise_for_status()
-        img = Image.open(BytesIO(resp.content)).convert("RGB")
-        img = img.resize((grid_lon, grid_lat))
-        img_p = img.convert("P", palette=Image.ADAPTIVE, colors=palette_colors)
-        idx = np.array(img_p, dtype=float)  # (grid_lat, grid_lon)
-        pal = img_p.getpalette()[: palette_colors * 3]
-        colors = [tuple(pal[i * 3: i * 3 + 3]) for i in range(palette_colors)]
-        return idx, colors
-    except Exception:
-        return None
-
-
 def make_earth_figure(radius=1.0, title="지구 (Earth)", height=380):
-    """실제 NASA 위성사진 텍스처를 입힌 지구 3D 구체.
-    인터넷 연결 문제 등으로 텍스처 로딩 실패 시, 노이즈 기반 대륙 패턴으로 자동 대체."""
-    loaded = _load_earth_palette()
+    """바다(파랑)-육지(초록/갈색)-극지방(흰색)이 뚜렷하게 구분되는 스타일화된 지구 3D 구체."""
+    theta = np.linspace(0, np.pi, 90)
+    phi = np.linspace(0, 2 * np.pi, 90)
+    theta, phi = np.meshgrid(theta, phi)
 
     display_radius = min(max((radius or 1.0) ** 0.5, 0.6), 1.8)
+    x = display_radius * np.sin(theta) * np.cos(phi)
+    y = display_radius * np.sin(theta) * np.sin(phi)
+    z = display_radius * np.cos(theta)
 
-    if loaded is not None:
-        idx, colors = loaded
-        grid_lat, grid_lon = idx.shape
-        n_colors = len(colors)
-
-        lat = np.linspace(0, np.pi, grid_lat)
-        lon = np.linspace(0, 2 * np.pi, grid_lon)
-        theta, phi = np.meshgrid(lat, lon, indexing="ij")
-
-        x = display_radius * np.sin(theta) * np.cos(phi)
-        y = display_radius * np.sin(theta) * np.sin(phi)
-        z = display_radius * np.cos(theta)
-
-        surfacecolor = idx / (n_colors - 1)
-        colorscale = [[i / (n_colors - 1), f"rgb({r},{g},{b})"] for i, (r, g, b) in enumerate(colors)]
-        cmin, cmax = 0, 1
-    else:
-        theta = np.linspace(0, np.pi, 80)
-        phi = np.linspace(0, 2 * np.pi, 80)
-        theta, phi = np.meshgrid(theta, phi)
-        x = display_radius * np.sin(theta) * np.cos(phi)
-        y = display_radius * np.sin(theta) * np.sin(phi)
-        z = display_radius * np.cos(theta)
-        surfacecolor = _earth_surface_value(theta, phi)
-        colorscale = EARTH_COLORSCALE
-        cmin, cmax = 0, 1
+    surfacecolor = _earth_surface_value(theta, phi)
 
     fig = go.Figure(
         data=[
             go.Surface(
                 x=x, y=y, z=z,
                 surfacecolor=surfacecolor,
-                colorscale=colorscale,
-                cmin=cmin, cmax=cmax,
+                colorscale=EARTH_COLORSCALE,
+                cmin=0, cmax=1,
                 showscale=False,
                 lighting=dict(ambient=0.55, diffuse=0.85, specular=0.25, roughness=0.7),
                 lightposition=dict(x=150, y=200, z=150),
@@ -316,4 +267,5 @@ def make_planet_figure(color="#3D7EAA", title="Earth", radius=1.0, height=380, i
         showlegend=False,
     )
     return fig
+
 
