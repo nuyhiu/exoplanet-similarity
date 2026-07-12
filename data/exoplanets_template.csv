@@ -1,0 +1,32 @@
+planet_name,star_type,temp_surface_c,pressure_atm,mass_earth,gravity_earth,radius_earth,escape_velocity_km_s,density_gcm3,orbital_period_days,rotation_period_hours,axial_tilt_deg,atmosphere_n2_pct,atmosphere_o2_pct,atmosphere_co2_pct,atmosphere_other_pct,atmosphere_notes,image_url,description
+Earth,G,15,1,1,1,1,11.19,5.51,365.25,24,23.4,78,21,0.04,0.96,Nitrogen-oxygen atmosphere; ozone layer present,,Reference planet for comparison
+Mercury,G,164,1.00E-14,0.05527461487,0.3772815336,0.3829383142,4.25,5.427,88,4224,0.03,0,42,0,58,O2 42% / Na 29% / H2 22% / He 6% / K 0.5% / other 0.5%,,No distinct seasons
+Venus,G,464,90.79694054,0.8151373074,0.9044560008,0.9498979752,10.36,5.243,225,2808,177.4,3.5,0,96.5,0,"Trace SO2, Ar, water vapor, CO, He, etc.",,No distinct seasons
+Mars,G,-64,0.006,0.1074514401,0.3794228612,0.5320985717,5.03,3.934,687,24.62277778,25.19,1.89,0.15,95.97,1.93,Includes ~1.93% Argon,,Earth-like four seasons; season lengths vary due to elliptical orbit
+Jupiter,G,-108,3.947693067,317.8164769,2.527786275,10.97331659,60.2,1.326,4333,9.916666667,3.13,0,0,0,100,[Corrected from source error] H2 89.8% / He 10.2% / trace CH4 etc. (source data mistakenly listed the same values as Mars; replaced with actual composition),,No distinct seasons
+Saturn,G,-139,1.233654083,95.18754186,1.064545733,9.459739444,35.48,0.687,10756,10.56055556,26.73,0,0,0,99.42,H2 96% / He 3% / CH4 0.4% / NH3 0.01% / HD 0.01% / C2H6 0.0007%,,Each season lasts about 7.5 years
+Uranus,G,-197.2,1,14.53951775,0.886101764,4.011772092,21.29,1.27,30687,17.24777778,97.77,0,0,0,100.31,"H2 83% / He 15% / CH4 2.3% / HD 0.01% / trace H2S, NH3",,Extreme climate with each season lasting about 21 years
+Neptune,G,-201,,17.14886135,1.136943,3.864699419,23.56,1.638,60190,16.11,28.32,0,0,0,100,"H2 80% / He 19% / CH4 <1% / C2H6 1.5ppm (100MPa figure likely a deep-atmosphere value, so surface pressure left blank)",,Each season lasts about 40 years; orbital period ~165 years
+Pluto,G,-229,9.87E-06,0.002181011386,0.06322014887,0.1859990582,1.21,1.853,90560,153.2833333,122.53,99,0,0,0.3,CH4 0.25% / CO 0.0515% / C2H2 0.0003% / C2H4 0.0001%,,Each season lasts about 60 years (orbital period ~248 years)
+Titan (moon of Saturn),,-179,1.45,0.02252846618,0.1378607117,0.4041280804,2.64,1.88,15.91666667,382,,97,0,0,3,"N2 95-98% / CH4 1.4-4.9% / trace ethane, argon (mass/gravity/radius corrected to actual Titan values)",,Moon of Saturn; each season lasts 7+ years; methane rain and climate change observed
+Enceladus (moon of Saturn),,-198,,1.81E-05,0.01152238197,0.03956992623,0.24,1.6097,,,,4,0,3.2,91,Water vapor 91% (from geysers); surface pressure extremely low (near vacuum),,Moon of Saturn; water vapor plumes from icy volcanism (geysers)
+Europa (moon of Jupiter),,-171,9.87E-13,0.008037247153,0.1339859284,0.2449850887,2.03,3.013,3.551181,85.228344,,0,,0,,"O2 and H2 present (trace, exact ratio unknown). Rotation assumed tidally locked (rotation = orbital period)",,Moon of Jupiter; possible liquid ocean beneath icy crust
+LP 791-18 d,M,25,,0.9,0.84,1.03,10.46,4.56,2.75,66,,,,,,Unconfirmed (possible water-vapor atmosphere from volcanic activity),,Assumed tidally locked; no distinct seasons
+Wolf 1069 b,M,-23,,1.26,,,,,15.56,373.44,,,,,,Unconfirmed (atmosphere may exist),,Assumed tidally locked; no seasonal change
+LHS 1140 b,M,,,5.6,2.4,1.45,21.98,5.9,24.7,592.8,,,,,,Unconfirmed (possible nitrogen-based atmosphere),,Assumed tidally locked; no seasonal change
+Kepler-1649 c,M,-39,,1.2,1.068624452,1.06,11.9,5.54,19.5,468,,,,,,Unconfirmed (atmosphere may exist),,Possibly tidally locked (uncertain); no seasonal change
+TOI-700 e,M,0.5,,0.818,0.8993576017,0.953,10.36,5.75,27.8,667.2,,,,,,Unconfirmed,,Assumed tidally locked; seasons unconfirmed
+TOI-715 b,M,-39,,3.02,1.65,1.55,15.61,5.05,19.29,,,,,,,Unconfirmed,,[Source data inconsistency: 19.29 vs 28 days orbital period - 19.29 days adopted] Seasons unconfirmed
+HD 63433 d,G,1260,,1.25,1.095136127,1.085,12.01,,4.2,100.8,,,,,,Unconfirmed,,No seasonal change
+HD 101581 b,K,,,3.6,3.925767309,0.956,21.71,,4.47,107.28,,,,,,"Unconfirmed (extreme heat expected, several hundred to 1000+ degrees)",,No seasonal change
+HD 101581 c,K,,,0.937,0.97,0.99,10.88,5.12,6.21,149.04,,,,,,Unconfirmed,,Assumed tidally locked; extremely short orbital period implies very frequent apparent season-like changes
+TOI-2094 b,M,2.9,,4.27,1.458142143,1.9,16.77,3.38,18.79,450.96,,,,,,Unconfirmed - possibly a thick H2/He envelope or water vapor/volatile-rich atmosphere,,Assumed tidally locked; no distinct seasons
+Luyten b (GJ 273 b),M,2.5,,2.89,1.25,1.51,15.47,4.61,18.6,446.4,,,,,,Unconfirmed (an Earth-like thick atmosphere is under discussion),,Tidally locked; no Earth-like day; no distinct four seasons
+Teegarden's Star b,M,28,,1.105,1,1.02,11.64,5.5,4.9,117.6,,,,,,Unconfirmed (observations ongoing),,Assumed tidally locked; only terminator zone may be habitable; seasonal change unlikely
+Kepler-452b,G,-8,,5,1.9,1.6,19.77,,385,,,,,,,Unconfirmed (thick atmosphere and clouds presumed),,Could have Earth-like seasons if axial tilt exists (unconfirmed)
+Proxima Centauri b,M,-39,,1.17,1,1.03,11.92,,11.2,268.8,,,,,,Unconfirmed (debate between atmosphere loss from stellar flares vs. retention),,Permanent day/night sides; no seasonal change
+WASP-76b,F,1950,,292.376,1.1,20.08116936,42.68,,1.8,43.2,,0,0,0,100,"Vaporized iron (Fe), sodium, calcium metal vapor",,Tidally locked (permanent day/night); iron rain; no seasons
+KELT-9b,A,4300,,915.264,2,20.84930152,74.11,,1.5,36,,0,0,0,100,"Mainly H2/He; extreme heat dissociates molecules, leaving atomic iron/titanium etc.",,Tidally locked; no concept of seasons
+HD 189733b,K,815,,359.114,2.53,12.50958091,59.93,1.326,2.2,52.8,,0,0,0,100,"Silicate (sand/glass) particles, sodium, hydrogen, etc. [gravity/density approximated from Jupiter per source note of similarity]",,"Tidally locked; extreme winds (~8,700 km/h); glass rain blows sideways"
+55 Cancri e,G,1750,,8.08,2.2,1.88,23.19,6.6,0.75,18,,0,0,0,0,Unconfirmed (possible H2/He or heated water/CO2 atmosphere),,Tidally locked; permanent lava ocean on one side; no seasons; possible diamond layer
+GJ 1214b,M,230,,6.55,0.9,2.74,17.29,1.94,1.6,38.4,,,,,,Thick water-vapor atmosphere presumed (2023 JWST observations also suggest a CO2-rich atmosphere is possible),,"Extremely high pressure; no solid crust, likely a supercritical fluid structure"
