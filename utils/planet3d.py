@@ -3,59 +3,63 @@
 import numpy as np
 import plotly.graph_objects as go
 
-# 지구용 컬러스케일: 짙은 바다(남색) -> 얕은 바다(청록) -> 육지(짙은 초록 -> 초록) -> 극지방(차분한 흰회색)
+# 지구용 컬러스케일: 밝은 파란 바다 -> 짙은 초록 육지 -> 차분한 흰회색 극지방
 EARTH_COLORSCALE = [
-    [0.00, "#041526"],
-    [0.20, "#083150"],
-    [0.40, "#0e4d75"],
-    [0.53, "#166f97"],
-    [0.55, "#16311c"],
-    [0.68, "#1f4a27"],
-    [0.80, "#2c6234"],
-    [0.90, "#3a7a40"],
+    [0.00, "#0f4c81"],
+    [0.20, "#1565a3"],
+    [0.40, "#1f7fc0"],
+    [0.53, "#3a9bd6"],
+    [0.56, "#1c4523"],
+    [0.68, "#25592c"],
+    [0.80, "#2f6d37"],
+    [0.90, "#3d8244"],
     [0.94, "#c6d2d8"],
     [1.00, "#eef2f4"],
 ]
 
 
+def _smoothstep(x, edge0, edge1):
+    t = np.clip((x - edge0) / (edge1 - edge0), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
 def _earth_surface_value(theta, phi):
     """theta(극각 0~pi), phi(방위각 0~2pi)를 위도/경도로 변환한 뒤,
-    실제 대륙의 대략적인 위치에 타원형 '블롭'을 배치해 대륙 모양을 흉내낸다."""
+    실제 대륙의 대략적인 위치에 타원형 '블롭'을 배치해 대륙 모양을 흉내낸다.
+    블롭 수를 최소화하고 경계를 매끄럽게(smoothstep) 처리해 지저분한 겹침을 방지."""
     lat = 90 - np.degrees(theta)  # +90(북극) ~ -90(남극)
     lon = ((np.degrees(phi) + 180) % 360) - 180  # -180 ~ 180
 
     def lon_diff(a, b):
         return (a - b + 180) % 360 - 180
 
-    # (중심 위도, 중심 경도, 위도 반경, 경도 반경, 세기) - 실제 대륙의 대략적인 위치
+    # (중심 위도, 중심 경도, 위도 반경, 경도 반경, 세기) - 6개 핵심 대륙만 사용
     continents = [
-        (48, -100, 24, 32, 1.00),   # 북아메리카
-        (-16, -60, 26, 15, 0.92),   # 남아메리카
-        (8, 20, 32, 24, 1.00),      # 아프리카
-        (55, 80, 26, 60, 1.05),     # 유라시아
-        (22, 78, 14, 16, 0.55),     # 인도 부근 (유라시아 남쪽 돌출부)
-        (-24, 134, 15, 19, 0.85),   # 호주
-        (73, -41, 11, 13, 0.55),    # 그린란드
-        (62, 100, 16, 30, 0.45),    # 시베리아 동부 강조
+        (45, -100, 22, 28, 1.00),   # 북아메리카
+        (-15, -60, 26, 14, 0.95),   # 남아메리카
+        (5, 20, 34, 20, 1.00),      # 아프리카
+        (50, 70, 24, 55, 1.00),     # 유라시아(유럽+아시아, 인도까지 포함하도록 폭 넓게)
+        (-24, 134, 14, 17, 0.85),   # 호주
+        (73, -41, 9, 11, 0.55),     # 그린란드
     ]
 
+    # 각 대륙을 완만한 지수(super-gaussian)로 계산해 둥근 원보다 넓적한 대륙형 실루엣 생성
     field = np.zeros_like(lat)
     for lat0, lon0, s_lat, s_lon, w in continents:
         d_lat = (lat - lat0) / s_lat
         d_lon = lon_diff(lon, lon0) / s_lon
-        field += w * np.exp(-(d_lat ** 2 + d_lon ** 2))
+        r2 = d_lat ** 2 + d_lon ** 2
+        field = np.maximum(field, w * np.exp(-(r2 ** 1.3)))
 
-    field = field / field.max()  # 0~1 정규화
+    polar_mask = np.abs(lat) > 74  # 극지방 비중 축소
 
-    polar_mask = np.abs(lat) > 74  # 극지방 비중 축소(기존 66도 -> 74도)
-    land_mask = (~polar_mask) & (field > 0.28)
-    ocean_mask = (~polar_mask) & (~land_mask)
+    land_frac = _smoothstep(field, 0.32, 0.5)  # 0=바다, 1=육지 (경계가 매끄럽게 전환)
 
-    value = np.zeros_like(field)
-    # 대륙에서 멀수록(field->0) 짙은 심해색, 육지에 가까울수록(field->0.28) 밝은 연안색
-    value[ocean_mask] = 0.02 + 0.51 * np.clip(field[ocean_mask] / 0.28, 0, 1)
-    value[land_mask] = 0.55 + 0.35 * np.clip((field[land_mask] - 0.28) / 0.5, 0, 1)
-    value[polar_mask] = 0.95 + 0.05 * (np.abs(lat[polar_mask]) - 74) / 16
+    ocean_value = 0.05 + 0.48 * _smoothstep(field, 0.0, 0.32)  # 육지에 가까울수록 밝은 연안색
+    land_value = 0.56 + 0.34 * _smoothstep(field, 0.5, 1.0)
+
+    value = ocean_value * (1 - land_frac) + land_value * land_frac
+    value = np.where(polar_mask, 0.95 + 0.05 * (np.abs(lat) - 74) / 16, value)
 
     return np.clip(value, 0, 1)
 
