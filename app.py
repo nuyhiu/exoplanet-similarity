@@ -205,8 +205,8 @@ if result["overall"] is not None:
     
     st.write("")
     sub1, sub2 = st.columns(2)
-    sub1.metric("ESI (물리적 유사도)", f"{result['esi']*100:.1f}%" if result["esi"] is not None else "N/A")
-    sub2.metric("확장 유사도 (대기·항성·주기 등)", f"{result['extended']*100:.1f}%" if result["extended"] is not None else "N/A")
+    sub1.metric("ESI", f"{result['esi']*100:.1f}%" if result["esi"] is not None else "N/A")
+    sub2.metric("복합적 요소 고려한 유사도 (대기·항성·주기 등)", f"{result['extended']*100:.1f}%" if result["extended"] is not None else "N/A")
 else:
     st.markdown("<div class='similarity-percent'>N/A</div>", unsafe_allow_html=True)
     st.markdown("<div style='color:#AEB6E0;'>계산 가능한 데이터가 부족합니다. CSV를 채워주세요.</div>", unsafe_allow_html=True)
