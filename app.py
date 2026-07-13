@@ -7,7 +7,7 @@ from utils.similarity import EARTH, compute_overall_similarity
 st.set_page_config(page_title="지구-외계행성 유사도 분석", page_icon="🪐", layout="wide")
 
 # ----------------------------------------------------------------------------
-# 다크 우주 테마 CSS (기존 스타일 + 토글 및 드롭다운 가독성 완전 해결)
+# 다크 우주 테마 CSS (토글 내부 및 드롭다운 가독성 완벽 교정)
 # ----------------------------------------------------------------------------
 st.markdown(
     """
@@ -26,31 +26,49 @@ st.markdown(
     }
     h1, h2, h3, h4 { color: #E8EAF6 !important; }
     
-    /* 기본 본문 설명 및 캡션 글자색 (기본 화면용 밝은 색상) */
+    /* 기본 화면용 본문 및 캡션 글자색 (밝은 청회색) */
     .stApp div p, .stApp .stCaption, .stApp p {
         color: #C3CADB;
     }
     
-    /* 1. [해결] '유사도는 어떻게 계산되나요?' 토글 관련 스타일 고정 */
-    /* 토글 헤더 자체의 글자색을 흰색으로 고정 */
+    /* ==========================================
+       [수정] 1. 토글(Expander) 내부 본문 글자 밝게 교정
+       ========================================== */
+    /* 토글 테두리 및 배경을 우주 테마에 맞는 짙은 색으로 고정 */
+    .stExpander {
+        background-color: #0E132E !important;
+        border: 1px solid #3A4680 !important;
+        border-radius: 8px;
+    }
+    /* 토글 제목 글자색 (흰색) */
     .stExpander details summary p {
         color: #FFFFFF !important;
         font-weight: 600 !important;
     }
-    /* 토글이 열렸을 때 (흰색 배경) 내부 본문 글자색을 짙은 색으로 변경 */
+    /* 토글 열렸을 때 내부 본문 문단(p) 및 리스트(li) 글자색 -> 선명한 밝은색 */
     .stExpander details div[data-testid="stExpanderDetails"] p,
     .stExpander details div[data-testid="stExpanderDetails"] li {
-        color: #1E293B !important; /* 짙은 회색/검은색 */
-        font-weight: 500;
+        color: #E2E8F0 !important; /* 선명하고 밝은 청백색 */
+        font-weight: 400 !important;
     }
     
-    /* 2. [해결] 행성 선택창 클릭 시 열리는 드롭다운 리스트 글자색 고정 */
-    /* 드롭다운 메뉴가 팝업되었을 때 리스트 항목들을 짙은 색으로 표시 */
+    /* ==========================================
+       [수정] 2. 행성 선택 드롭다운 팝업창 가독성 교정
+       ========================================== */
+    /* 드롭다운 리스트 팝업창 자체의 배경을 짙은 우주색으로 변경 */
+    div[data-baseweb="popover"] div {
+        background-color: #0F163A !important;
+    }
+    /* 드롭다운 내부 리스트 항목 글자색 -> 선명한 흰색 */
     div[data-baseweb="popover"] div div {
-        color: #0F172A !important; /* 확실하게 보일 수 있는 짙은 네이비 */
+        color: #FFFFFF !important; 
+    }
+    /* 마우스 올렸을 때(호버) 배경색 살짝 밝게 해서 구별 */
+    div[data-baseweb="popover"] ul li:hover {
+        background-color: #1E295D !important;
     }
     
-    /* 원래 화면에 표시되는 행성 이름 자체는 투명하고 크게 유지 */
+    /* 화면에 평소에 표시되는 행성 이름 스타일 (투명하고 큰 텍스트 링크 형태) */
     .planet-select-box div[data-baseweb="select"] {
         background-color: transparent !important;
         border: none !important;
@@ -229,7 +247,7 @@ if isinstance(row.get("atmosphere_notes"), str) and row["atmosphere_notes"].stri
     st.caption(f"💨 대기 관련 메모: {row['atmosphere_notes']}")
 
 # ----------------------------------------------------------------------------
-# 하단 유사도 계산 설명 토글 (글자 가독성 개선)
+# 하단 유사도 계산 설명 토글 (가독성 최종 패치 완료)
 # ----------------------------------------------------------------------------
 with st.expander("ℹ️ 유사도는 어떻게 계산되나요?"):
     st.markdown(
