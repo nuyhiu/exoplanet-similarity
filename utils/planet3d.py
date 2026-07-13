@@ -3,18 +3,18 @@
 import numpy as np
 import plotly.graph_objects as go
 
-# 지구용 컬러스케일: 밝은 파란 바다 -> 초록 육지 -> 밝은 회백색 극지방
+# 지구용 컬러스케일: 밝은 파란 바다 -> 밝은 초록 육지 -> 흰색 극지방
 EARTH_COLORSCALE = [
-    [0.00, "#1668a8"],
-    [0.20, "#1b7cc4"],
-    [0.40, "#2490d6"],
-    [0.53, "#4aabe0"],
-    [0.56, "#2c6b34"],
-    [0.68, "#357f3d"],
-    [0.80, "#3f9346"],
-    [0.90, "#4ea855"],
-    [0.94, "#dbe6ea"],
-    [1.00, "#f5f8f9"],
+    [0.00, "#2d8fd1"],
+    [0.20, "#3a9edd"],
+    [0.40, "#4bade8"],
+    [0.53, "#6ec2ef"],
+    [0.56, "#3fa347"],
+    [0.68, "#4cb454"],
+    [0.80, "#5cc463"],
+    [0.90, "#6fd075"],
+    [0.94, "#eef4f6"],
+    [1.00, "#ffffff"],
 ]
 
 
@@ -79,7 +79,7 @@ def make_earth_figure(radius=1.0, title="지구 (Earth)", height=380):
                 colorscale=EARTH_COLORSCALE,
                 cmin=0, cmax=1,
                 showscale=False,
-                lighting=dict(ambient=0.75, diffuse=0.75, specular=0.2, roughness=0.7),
+                lighting=dict(ambient=0.95, diffuse=0.3, specular=0.05, roughness=1.0),
                 lightposition=dict(x=150, y=200, z=150),
                 hoverinfo="skip",
             )
