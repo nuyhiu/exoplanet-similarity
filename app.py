@@ -7,7 +7,7 @@ from utils.similarity import EARTH, compute_overall_similarity
 st.set_page_config(page_title="지구-외계행성 유사도 분석", page_icon="🪐", layout="wide")
 
 # ----------------------------------------------------------------------------
-# 다크 우주 테마 CSS (기존 스타일 복구 + 가독성 및 UI 개선)
+# 다크 우주 테마 CSS (기존 스타일 + 토글 및 드롭다운 가독성 완전 해결)
 # ----------------------------------------------------------------------------
 st.markdown(
     """
@@ -26,12 +26,31 @@ st.markdown(
     }
     h1, h2, h3, h4 { color: #E8EAF6 !important; }
     
-    /* 1. 원래 안 보였던 작은 글씨(st.caption, 소제목 아래 설명 등) 선명하게 만들기 */
-    .stMarkdown div p, .stCaption, p {
-        color: #C3CADB !important; /* 어두운 회색 대신 밝고 투명도 높은 청회색으로 변경 */
+    /* 기본 본문 설명 및 캡션 글자색 (기본 화면용 밝은 색상) */
+    .stApp div p, .stApp .stCaption, .stApp p {
+        color: #C3CADB;
     }
     
-    /* 2. 행성 이름 텍스트 자체를 클릭하면 드롭다운이 열리도록 투명 스타일링 */
+    /* 1. [해결] '유사도는 어떻게 계산되나요?' 토글 관련 스타일 고정 */
+    /* 토글 헤더 자체의 글자색을 흰색으로 고정 */
+    .stExpander details summary p {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+    }
+    /* 토글이 열렸을 때 (흰색 배경) 내부 본문 글자색을 짙은 색으로 변경 */
+    .stExpander details div[data-testid="stExpanderDetails"] p,
+    .stExpander details div[data-testid="stExpanderDetails"] li {
+        color: #1E293B !important; /* 짙은 회색/검은색 */
+        font-weight: 500;
+    }
+    
+    /* 2. [해결] 행성 선택창 클릭 시 열리는 드롭다운 리스트 글자색 고정 */
+    /* 드롭다운 메뉴가 팝업되었을 때 리스트 항목들을 짙은 색으로 표시 */
+    div[data-baseweb="popover"] div div {
+        color: #0F172A !important; /* 확실하게 보일 수 있는 짙은 네이비 */
+    }
+    
+    /* 원래 화면에 표시되는 행성 이름 자체는 투명하고 크게 유지 */
     .planet-select-box div[data-baseweb="select"] {
         background-color: transparent !important;
         border: none !important;
@@ -45,12 +64,11 @@ st.markdown(
         color: #EAF0FF !important;
         cursor: pointer;
     }
-    /* 선택창 내부의 지우기 버튼이나 화살표 아이콘 숨기기 (텍스트 클릭 효과 강조) */
     .planet-select-box div[data-baseweb="select"] [data-testid="InputRoot"] ~ div {
         display: none !important;
     }
     
-    /* 3. 유사도 박스 스타일 (기존 스타일 유지하며 가독성만 확보) */
+    /* 3. 유사도 박스 스타일 */
     .similarity-box {
         background: linear-gradient(135deg, #141A3C, #1B2350);
         border: 1px solid #3A4680;
@@ -62,8 +80,8 @@ st.markdown(
     .similarity-percent {
         font-size: 3rem;
         font-weight: 800;
-        color: #7FE6B8 !important; /* 기존의 예쁜 민트 그린 색상 유지 */
-        text-shadow: 0 0 15px rgba(127, 230, 184, 0.4); /* 밤하늘에서 잘 보이도록 은은한 광채 추가 */
+        color: #7FE6B8 !important;
+        text-shadow: 0 0 15px rgba(127, 230, 184, 0.4);
     }
     
     .factor-table td, .factor-table th { color: #D6DCF5 !important; }
@@ -100,7 +118,7 @@ if "idx" not in st.session_state:
 nav_col1, nav_col2, nav_col3 = st.columns([1, 6, 1])
 
 with nav_col1:
-    st.write("") # 버튼 위치 밸런스 조정
+    st.write("") 
     if st.button("◀", use_container_width=True, disabled=(n == 0)):
         st.session_state.idx = (st.session_state.idx - 1) % n
         st.rerun()
@@ -112,7 +130,6 @@ with nav_col3:
         st.rerun()
 
 with nav_col2:
-    # 커스텀 스타일을 입히기 위해 div 컨테이너로 감싸기
     st.markdown('<div class="planet-select-box">', unsafe_allow_html=True)
     
     planet_options = list(planets_df["planet_name"])
@@ -125,7 +142,6 @@ with nav_col2:
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # 드롭다운에서 행성을 선택하면 인덱스 변경
     if planet_options.index(selected_planet) != st.session_state.idx:
         st.session_state.idx = planet_options.index(selected_planet)
         st.rerun()
@@ -133,7 +149,7 @@ with nav_col2:
 # 현재 선택된 행성 데이터
 row = planets_df.iloc[st.session_state.idx]
 
-# 이미지 및 설명 표시 (1/30 순서 표시는 제거됨)
+# 이미지 및 설명 표시
 with nav_col2:
     if isinstance(row.get("image_url"), str) and row["image_url"].strip():
         st.image(row["image_url"], use_container_width=True)
@@ -212,6 +228,9 @@ st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True
 if isinstance(row.get("atmosphere_notes"), str) and row["atmosphere_notes"].strip():
     st.caption(f"💨 대기 관련 메모: {row['atmosphere_notes']}")
 
+# ----------------------------------------------------------------------------
+# 하단 유사도 계산 설명 토글 (글자 가독성 개선)
+# ----------------------------------------------------------------------------
 with st.expander("ℹ️ 유사도는 어떻게 계산되나요?"):
     st.markdown(
         """
