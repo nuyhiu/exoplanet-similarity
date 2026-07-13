@@ -1,9 +1,15 @@
 """Plotly go.Surface로 3D 행성 구체를 그리는 모듈."""
 
+from functools import lru_cache
+from io import BytesIO
+
 import numpy as np
 import plotly.graph_objects as go
 
-# 지구용 컬러스케일: 밝은 파란 바다 -> 짙은 초록 육지 -> 차분한 흰회색 극지방
+# Solar System Scope의 지구 데이맵 텍스처 (구름 없는 실제 위성 이미지 합성본, CC BY 4.0, NASA 데이터 기반)
+EARTH_TEXTURE_URL = "https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg"
+
+# 지구용 컬러스케일(실제 텍스처 로딩 실패 시 대체용): 밝은 파란 바다 -> 짙은 초록 육지 -> 차분한 흰회색 극지방
 EARTH_COLORSCALE = [
     [0.00, "#0f4c81"],
     [0.20, "#1565a3"],
@@ -25,7 +31,7 @@ def _smoothstep(x, edge0, edge1):
 
 def _earth_surface_value(theta, phi):
     """theta(극각 0~pi), phi(방위각 0~2pi)를 위도/경도로 변환한 뒤,
-    실제 대륙의 대략적인 위치에 타원형 '블롭'을 배치해 대륙 모양을 흉내낸다."""
+    실제 대륙의 대략적인 위치에 타원형 '블롭'을 배치해 대륙 모양을 흉내낸다(대체용)."""
     lat = 90 - np.degrees(theta)
     lon = ((np.degrees(phi) + 180) % 360) - 180
 
@@ -58,29 +64,78 @@ def _earth_surface_value(theta, phi):
     return np.clip(value, 0, 1)
 
 
+@lru_cache(maxsize=1)
+def _load_earth_palette(grid_lon=120, grid_lat=60):
+    """실제 지구 텍스처 이미지를 불러와 (팔레트 인덱스 배열, RGB 팔레트) 로 변환.
+    Pillow의 무거운 ADAPTIVE 색상 양자화(과거 서버 크래시 유발 의심) 대신,
+    numpy로 직접 간단한 비트 축소 양자화를 수행해 가볍게 처리함.
+    실패 시 None 반환 -> 호출부에서 스타일화된 지구로 자동 대체."""
+    try:
+        import requests
+        from PIL import Image
+
+        resp = requests.get(EARTH_TEXTURE_URL, timeout=8)
+        resp.raise_for_status()
+        img = Image.open(BytesIO(resp.content)).convert("RGB")
+        img = img.resize((grid_lon, grid_lat), Image.NEAREST)  # 단순 리샘플링(무거운 필터 회피)
+        arr = np.asarray(img, dtype=np.uint8)  # (grid_lat, grid_lon, 3)
+
+        # 채널당 4비트(16단계)로 양자화 -> 색상 수를 보수적으로 제한(PIL ADAPTIVE 미사용)
+        q = (arr.astype(np.int32) >> 4)
+        key = q[..., 0] * 16 * 16 + q[..., 1] * 16 + q[..., 2]
+        unique_keys, inverse = np.unique(key, return_inverse=True)
+
+        r = (unique_keys // (16 * 16)) * 16 + 8
+        g = ((unique_keys // 16) % 16) * 16 + 8
+        b = (unique_keys % 16) * 16 + 8
+        colors = list(zip(r.tolist(), g.tolist(), b.tolist()))
+
+        idx = inverse.reshape(arr.shape[:2]).astype(float)
+        return idx, colors
+    except Exception:
+        return None
+
+
 def make_earth_figure(radius=1.0, title="지구 (Earth)", height=380):
-    """바다(밝은 파랑)-육지(초록)-극지방(흰회색)이 뚜렷하게 구분되는 스타일화된 지구 3D 구체.
-    (실제 위성 텍스처는 배포 서버에서 세그폴트를 유발해 제외함)"""
-    theta = np.linspace(0, np.pi, 90)
-    phi = np.linspace(0, 2 * np.pi, 90)
-    theta, phi = np.meshgrid(theta, phi)
-
+    """실제 위성 텍스처(구름 없는 데이맵)를 입힌 지구 3D 구체.
+    로딩 실패 시 스타일화된 대륙 패턴으로 자동 대체."""
+    loaded = _load_earth_palette()
     display_radius = min(max((radius or 1.0) ** 0.5, 0.6), 1.8)
-    x = display_radius * np.sin(theta) * np.cos(phi)
-    y = display_radius * np.sin(theta) * np.sin(phi)
-    z = display_radius * np.cos(theta)
 
-    surfacecolor = _earth_surface_value(theta, phi)
+    if loaded is not None:
+        idx, colors = loaded
+        grid_lat, grid_lon = idx.shape
+        n_colors = len(colors)
+
+        lat = np.linspace(0, np.pi, grid_lat)
+        lon = np.linspace(0, 2 * np.pi, grid_lon)
+        theta, phi = np.meshgrid(lat, lon, indexing="ij")
+
+        x = display_radius * np.sin(theta) * np.cos(phi)
+        y = display_radius * np.sin(theta) * np.sin(phi)
+        z = display_radius * np.cos(theta)
+
+        surfacecolor = idx / max(n_colors - 1, 1)
+        colorscale = [[i / max(n_colors - 1, 1), f"rgb({r},{g},{b})"] for i, (r, g, b) in enumerate(colors)]
+    else:
+        theta = np.linspace(0, np.pi, 90)
+        phi = np.linspace(0, 2 * np.pi, 90)
+        theta, phi = np.meshgrid(theta, phi)
+        x = display_radius * np.sin(theta) * np.cos(phi)
+        y = display_radius * np.sin(theta) * np.sin(phi)
+        z = display_radius * np.cos(theta)
+        surfacecolor = _earth_surface_value(theta, phi)
+        colorscale = EARTH_COLORSCALE
 
     fig = go.Figure(
         data=[
             go.Surface(
                 x=x, y=y, z=z,
                 surfacecolor=surfacecolor,
-                colorscale=EARTH_COLORSCALE,
+                colorscale=colorscale,
                 cmin=0, cmax=1,
                 showscale=False,
-                lighting=dict(ambient=0.55, diffuse=0.85, specular=0.25, roughness=0.7),
+                lighting=dict(ambient=0.65, diffuse=0.85, specular=0.2, roughness=0.7),
                 lightposition=dict(x=150, y=200, z=150),
                 hoverinfo="skip",
             )
