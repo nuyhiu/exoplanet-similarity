@@ -7,7 +7,7 @@ from utils.similarity import EARTH, compute_overall_similarity
 st.set_page_config(page_title="지구-외계행성 유사도 분석", page_icon="🪐", layout="wide")
 
 # ----------------------------------------------------------------------------
-# 다크 우주 테마 CSS (토글 내부 및 드롭다운 가독성 완벽 교정)
+# 다크 우주 테마 CSS (가독성이 확보된 우주 스타일)
 # ----------------------------------------------------------------------------
 st.markdown(
     """
@@ -26,49 +26,39 @@ st.markdown(
     }
     h1, h2, h3, h4 { color: #E8EAF6 !important; }
     
-    /* 기본 화면용 본문 및 캡션 글자색 (밝은 청회색) */
+    /* 화면의 기본 설명글 및 캡션 (밝은 청회색 고정) */
     .stApp div p, .stApp .stCaption, .stApp p {
         color: #C3CADB;
     }
     
-    /* ==========================================
-       [수정] 1. 토글(Expander) 내부 본문 글자 밝게 교정
-       ========================================== */
-    /* 토글 테두리 및 배경을 우주 테마에 맞는 짙은 색으로 고정 */
+    /* 토글(Expander) 내부 본문 텍스트 밝게 변경 */
     .stExpander {
-        background-color: #0E132E !important;
+        background-color: rgba(14, 19, 46, 0.7) !important;
         border: 1px solid #3A4680 !important;
         border-radius: 8px;
     }
-    /* 토글 제목 글자색 (흰색) */
     .stExpander details summary p {
         color: #FFFFFF !important;
         font-weight: 600 !important;
     }
-    /* 토글 열렸을 때 내부 본문 문단(p) 및 리스트(li) 글자색 -> 선명한 밝은색 */
     .stExpander details div[data-testid="stExpanderDetails"] p,
-    .stExpander details div[data-testid="stExpanderDetails"] li {
-        color: #E2E8F0 !important; /* 선명하고 밝은 청백색 */
-        font-weight: 400 !important;
+    .stExpander details div[data-testid="stExpanderDetails"] li,
+    .stExpander details div[data-testid="stExpanderDetails"] {
+        color: #F1F5F9 !important;
     }
     
-    /* ==========================================
-       [수정] 2. 행성 선택 드롭다운 팝업창 가독성 교정
-       ========================================== */
-    /* 드롭다운 리스트 팝업창 자체의 배경을 짙은 우주색으로 변경 */
+    /* 행성 선택 드롭다운 리스트 가독성 패치 */
     div[data-baseweb="popover"] div {
         background-color: #0F163A !important;
     }
-    /* 드롭다운 내부 리스트 항목 글자색 -> 선명한 흰색 */
     div[data-baseweb="popover"] div div {
         color: #FFFFFF !important; 
     }
-    /* 마우스 올렸을 때(호버) 배경색 살짝 밝게 해서 구별 */
     div[data-baseweb="popover"] ul li:hover {
         background-color: #1E295D !important;
     }
     
-    /* 화면에 평소에 표시되는 행성 이름 스타일 (투명하고 큰 텍스트 링크 형태) */
+    /* 메인 화면 링크형 투명 행성 이름 스타일 */
     .planet-select-box div[data-baseweb="select"] {
         background-color: transparent !important;
         border: none !important;
@@ -86,7 +76,7 @@ st.markdown(
         display: none !important;
     }
     
-    /* 3. 유사도 박스 스타일 */
+    /* 유사도 박스 및 신규 ESI 지수 스타일 */
     .similarity-box {
         background: linear-gradient(135deg, #141A3C, #1B2350);
         border: 1px solid #3A4680;
@@ -100,6 +90,15 @@ st.markdown(
         font-weight: 800;
         color: #7FE6B8 !important;
         text-shadow: 0 0 15px rgba(127, 230, 184, 0.4);
+        margin-bottom: 0px;
+    }
+    /* 새로 추가한 공식 ESI 지수 라벨 */
+    .esi-value-label {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #93C5FD !important; /* 선명한 하늘색 톤 */
+        margin-top: -5px;
+        margin-bottom: 10px;
     }
     
     .factor-table td, .factor-table th { color: #D6DCF5 !important; }
@@ -189,14 +188,22 @@ with col_right:
     )
 
 # ----------------------------------------------------------------------------
-# 유사도 계산 및 표시
+# 유사도 계산 및 표시 (ESI Index 지수 추가)
 # ----------------------------------------------------------------------------
 result = compute_overall_similarity(row)
 
 st.markdown("<div class='similarity-box'>", unsafe_allow_html=True)
 if result["overall"] is not None:
+    # 1. 종합 유사도 퍼센티지
     st.markdown(f"<div class='similarity-percent'>{result['overall']*100:.1f}%</div>", unsafe_allow_html=True)
-    st.markdown("<div style='color:#AEB6E0;'>지구와의 종합 유사도</div>", unsafe_allow_html=True)
+    
+    # 2. [신규 추가] 인터넷 검색 규격에 맞는 소수점 형태 ESI 지수 (0.XX / 1.00)
+    esi_val = result['esi'] if result['esi'] is not None else 0.0
+    st.markdown(f"<div class='esi-value-label'>ESI Index: {esi_val:.2f} / 1.00</div>", unsafe_allow_html=True)
+    
+    st.markdown("<div style='color:#AEB6E0; font-weight:500;'>지구와의 종합 유사도</div>", unsafe_allow_html=True)
+    
+    st.write("")
     sub1, sub2 = st.columns(2)
     sub1.metric("ESI (물리적 유사도)", f"{result['esi']*100:.1f}%" if result["esi"] is not None else "N/A")
     sub2.metric("확장 유사도 (대기·항성·주기 등)", f"{result['extended']*100:.1f}%" if result["extended"] is not None else "N/A")
@@ -246,9 +253,6 @@ st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True
 if isinstance(row.get("atmosphere_notes"), str) and row["atmosphere_notes"].strip():
     st.caption(f"💨 대기 관련 메모: {row['atmosphere_notes']}")
 
-# ----------------------------------------------------------------------------
-# 하단 유사도 계산 설명 토글 (가독성 최종 패치 완료)
-# ----------------------------------------------------------------------------
 with st.expander("ℹ️ 유사도는 어떻게 계산되나요?"):
     st.markdown(
         """
