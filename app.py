@@ -157,7 +157,7 @@ for label, key, earth_val, unit in factor_rows:
         {
             "요소": label,
             "지구 값": f"{earth_val}{unit}",
-            "외계행성 값": f"{val}{unit}" if has_val else "미확인"
+            "이 행성 값": f"{val}{unit}" if has_val else "미확인"
         }
     )
 
@@ -175,4 +175,3 @@ with st.expander("ℹ️ 유사도는 어떻게 계산되나요?"):
 - 값이 비어 있는(미확인) 요소는 계산에서 자동으로 제외되고, 나머지 요소들의 가중치로 재조정됩니다.
         """
     )
-
