@@ -64,12 +64,21 @@ def _earth_surface_value(theta, phi):
     return np.clip(value, 0, 1)
 
 
+_last_earth_load_error = None
+
+
+def get_last_earth_load_error():
+    """가장 최근 실제 텍스처 로딩 시도의 실패 사유(문자열) 반환. 성공했으면 None."""
+    return _last_earth_load_error
+
+
 @lru_cache(maxsize=1)
 def _load_earth_palette(grid_lon=120, grid_lat=60):
     """실제 지구 텍스처 이미지를 불러와 (팔레트 인덱스 배열, RGB 팔레트) 로 변환.
     Pillow의 무거운 ADAPTIVE 색상 양자화(과거 서버 크래시 유발 의심) 대신,
     numpy로 직접 간단한 비트 축소 양자화를 수행해 가볍게 처리함.
     실패 시 None 반환 -> 호출부에서 스타일화된 지구로 자동 대체."""
+    global _last_earth_load_error
     try:
         import requests
         from PIL import Image
@@ -91,8 +100,10 @@ def _load_earth_palette(grid_lon=120, grid_lat=60):
         colors = list(zip(r.tolist(), g.tolist(), b.tolist()))
 
         idx = inverse.reshape(arr.shape[:2]).astype(float)
+        _last_earth_load_error = None
         return idx, colors
-    except Exception:
+    except Exception as e:
+        _last_earth_load_error = f"{type(e).__name__}: {e}"
         return None
 
 
