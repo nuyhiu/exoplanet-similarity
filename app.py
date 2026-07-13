@@ -7,7 +7,7 @@ from utils.similarity import EARTH, compute_overall_similarity
 st.set_page_config(page_title="지구-외계행성 유사도 분석", page_icon="🪐", layout="wide")
 
 # ----------------------------------------------------------------------------
-# 다크 우주 테마 CSS (별 배경 + 카드 스타일 + 가독성 개선)
+# 다크 우주 테마 CSS (기존 스타일 복구 + 가독성 및 UI 개선)
 # ----------------------------------------------------------------------------
 st.markdown(
     """
@@ -26,51 +26,46 @@ st.markdown(
     }
     h1, h2, h3, h4 { color: #E8EAF6 !important; }
     
-    /* 행성 이름 및 메모 가독성 개선 (밝은 화이트/연청색) */
-    .planet-name {
-        text-align: center;
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #FFFFFF !important;
-        margin-bottom: 0.5rem;
-    }
-    .planet-desc {
-        text-align: center;
-        font-size: 1.0rem;
-        color: #E2E8F0 !important;
-        margin-bottom: 1rem;
-        font-weight: 500;
-    }
-    .atmosphere-note {
-        font-size: 0.95rem;
-        color: #F1F5F9 !important;
-        background-color: rgba(255, 255, 255, 0.1);
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        margin-top: 0.5rem;
+    /* 1. 원래 안 보였던 작은 글씨(st.caption, 소제목 아래 설명 등) 선명하게 만들기 */
+    .stMarkdown div p, .stCaption, p {
+        color: #C3CADB !important; /* 어두운 회색 대신 밝고 투명도 높은 청회색으로 변경 */
     }
     
-    /* 유사도 박스 내부 글자색 선명하게 변경 */
+    /* 2. 행성 이름 텍스트 자체를 클릭하면 드롭다운이 열리도록 투명 스타일링 */
+    .planet-select-box div[data-baseweb="select"] {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .planet-select-box div[data-baseweb="select"] > div {
+        background-color: transparent !important;
+        justify-content: center !important;
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        color: #EAF0FF !important;
+        cursor: pointer;
+    }
+    /* 선택창 내부의 지우기 버튼이나 화살표 아이콘 숨기기 (텍스트 클릭 효과 강조) */
+    .planet-select-box div[data-baseweb="select"] [data-testid="InputRoot"] ~ div {
+        display: none !important;
+    }
+    
+    /* 3. 유사도 박스 스타일 (기존 스타일 유지하며 가독성만 확보) */
     .similarity-box {
         background: linear-gradient(135deg, #141A3C, #1B2350);
-        border: 1px solid #4F5EAB;
+        border: 1px solid #3A4680;
         border-radius: 16px;
         padding: 1.2rem 1.5rem;
         text-align: center;
         margin-top: 0.5rem;
     }
     .similarity-percent {
-        font-size: 3.5rem;
+        font-size: 3rem;
         font-weight: 800;
-        color: #A3E635 !important; /* 더 밝은 라임 그린 계열로 변경 */
-        text-shadow: 0 0 10px rgba(163, 230, 53, 0.3);
+        color: #7FE6B8 !important; /* 기존의 예쁜 민트 그린 색상 유지 */
+        text-shadow: 0 0 15px rgba(127, 230, 184, 0.4); /* 밤하늘에서 잘 보이도록 은은한 광채 추가 */
     }
-    .similarity-label {
-        color: #E2E8F0 !important; /* 종합 유사도 라벨 밝게 */
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-    }
+    
     .factor-table td, .factor-table th { color: #D6DCF5 !important; }
     </style>
     """,
@@ -97,7 +92,7 @@ if n == 0:
     st.stop()
 
 # ----------------------------------------------------------------------------
-# 행성 선택 및 내비게이션 (좌우 화살표 + 토글 선택 창 통합)
+# 행성 탐색 (좌우 화살표 + 이름 클릭 토글)
 # ----------------------------------------------------------------------------
 if "idx" not in st.session_state:
     st.session_state.idx = 0
@@ -105,42 +100,45 @@ if "idx" not in st.session_state:
 nav_col1, nav_col2, nav_col3 = st.columns([1, 6, 1])
 
 with nav_col1:
-    st.write("") # 화살표 수직 정렬용 여백
-    st.write("")
-    if st.button("◀", use_container_width=True):
+    st.write("") # 버튼 위치 밸런스 조정
+    if st.button("◀", use_container_width=True, disabled=(n == 0)):
         st.session_state.idx = (st.session_state.idx - 1) % n
         st.rerun()
 
 with nav_col3:
-    st.write("") 
     st.write("")
-    if st.button("▶", use_container_width=True):
+    if st.button("▶", use_container_width=True, disabled=(n == 0)):
         st.session_state.idx = (st.session_state.idx + 1) % n
         st.rerun()
 
 with nav_col2:
-    # 전체 행성 리스트를 드롭다운(토글)으로 보여주고 선택 가능하게 함
+    # 커스텀 스타일을 입히기 위해 div 컨테이너로 감싸기
+    st.markdown('<div class="planet-select-box">', unsafe_allow_html=True)
+    
     planet_options = list(planets_df["planet_name"])
     selected_planet = st.selectbox(
-        "🔍 분석할 외계행성을 선택하세요",
+        "행성 선택",
         options=planet_options,
         index=st.session_state.idx,
-        label_visibility="collapsed" # 레이블을 숨겨서 깔끔하게 배치
+        label_visibility="collapsed"
     )
     
-    # 드롭다운 선택 시 index 업데이트
-    st.session_state.idx = planet_options.index(selected_planet)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # 드롭다운에서 행성을 선택하면 인덱스 변경
+    if planet_options.index(selected_planet) != st.session_state.idx:
+        st.session_state.idx = planet_options.index(selected_planet)
+        st.rerun()
 
-# 현재 선택된 행성 데이터 가져오기
+# 현재 선택된 행성 데이터
 row = planets_df.iloc[st.session_state.idx]
 
-# 행성 이미지 및 설명 표시 (순서 수자 1/30 삭제)
+# 이미지 및 설명 표시 (1/30 순서 표시는 제거됨)
 with nav_col2:
-    st.markdown(f"<div class='planet-name'>{row['planet_name']}</div>", unsafe_allow_html=True)
     if isinstance(row.get("image_url"), str) and row["image_url"].strip():
         st.image(row["image_url"], use_container_width=True)
     if isinstance(row.get("description"), str) and row["description"].strip():
-        st.markdown(f"<div class='planet-desc'>{row['description']}</div>", unsafe_allow_html=True)
+        st.caption(row["description"])
 
 st.divider()
 
@@ -157,22 +155,20 @@ with col_right:
     )
 
 # ----------------------------------------------------------------------------
-# 유사도 계산 및 표시 (글자 가독성 개선 적용)
+# 유사도 계산 및 표시
 # ----------------------------------------------------------------------------
 result = compute_overall_similarity(row)
 
 st.markdown("<div class='similarity-box'>", unsafe_allow_html=True)
 if result["overall"] is not None:
     st.markdown(f"<div class='similarity-percent'>{result['overall']*100:.1f}%</div>", unsafe_allow_html=True)
-    st.markdown("<div class='similarity-label'>지구와의 종합 유사도</div>", unsafe_allow_html=True)
-    
-    # 메트릭 컴포넌트 내부 가독성은 streamlit 기본 스타일을 따르되, 컬럼 배치로 깔끔하게 처리
+    st.markdown("<div style='color:#AEB6E0;'>지구와의 종합 유사도</div>", unsafe_allow_html=True)
     sub1, sub2 = st.columns(2)
-    sub1.metric("ESI (물리적 유사도)", f"{result['esi']*100:.1f}%" if result['esi'] is not None else "N/A")
-    sub2.metric("확장 유사도 (대기·항성·주기 등)", f"{result['extended']*100:.1f}%" if result['extended'] is not None else "N/A")
+    sub1.metric("ESI (물리적 유사도)", f"{result['esi']*100:.1f}%" if result["esi"] is not None else "N/A")
+    sub2.metric("확장 유사도 (대기·항성·주기 등)", f"{result['extended']*100:.1f}%" if result["extended"] is not None else "N/A")
 else:
     st.markdown("<div class='similarity-percent'>N/A</div>", unsafe_allow_html=True)
-    st.markdown("<div class='similarity-label' style='color:#F87171 !important;'>계산 가능한 데이터가 부족합니다. CSV를 채워주세요.</div>", unsafe_allow_html=True)
+    st.markdown("<div style='color:#AEB6E0;'>계산 가능한 데이터가 부족합니다. CSV를 채워주세요.</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.write("")
@@ -213,9 +209,8 @@ for label, key, earth_val, unit in factor_rows:
 
 st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True)
 
-# 대기 관련 메모 가독성 개선 디자인 적용
 if isinstance(row.get("atmosphere_notes"), str) and row["atmosphere_notes"].strip():
-    st.markdown(f"<div class='atmosphere-note'>💨 <b>대기 관련 메모:</b> {row['atmosphere_notes']}</div>", unsafe_allow_html=True)
+    st.caption(f"💨 대기 관련 메모: {row['atmosphere_notes']}")
 
 with st.expander("ℹ️ 유사도는 어떻게 계산되나요?"):
     st.markdown(
